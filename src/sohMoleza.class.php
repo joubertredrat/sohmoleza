@@ -74,7 +74,7 @@
  *	sohMoleza::iniciar()
  *		->setDadosBanco('coiote', 'root', '')
  *		->setAutor('Joubert Guimarães de Assis', 'joubert@redrat.com.br')
- *		->setAutor('Durangos Protozoários', 'durangos@redrat.com.br')
+ *		->setAutor('Sr Seu Zé', 'seu@ze.com.br')
  *		->setCopyright('RedRat Consultoria')
  *		->setCopyright('Casa do jão')
  *		->setPackage('Maximus')
