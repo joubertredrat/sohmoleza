@@ -1,7 +1,7 @@
 <?php
-	require('sohMoleza.class.php');
+	require('../src/sohMoleza.class.php');
 
 	sohMoleza::iniciar()
-	->setDadosBanco('code', 'user', 'pass')
+	->setDadosBanco('joubert_teste', 'root', 'verdade')
 	->validarMetodoSet()
 	->gerarClasses();

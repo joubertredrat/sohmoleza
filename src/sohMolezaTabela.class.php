@@ -533,27 +533,36 @@ class sohMolezaTabela
 		$retorno[] = " */";
 		$retorno[] = "public function __construct($" . $pk[self::TABELA_COLUNA_NOME] . " = null)";
 		$retorno[] = "{";
-		$retorno[] = "	if($" . $pk[self::TABELA_COLUNA_NOME] . " !== null)";
+
+		$retorno[] = "	switch(true)";
 		$retorno[] = "	{";
-		$retorno[] = "		\$query = 'SELECT * FROM " . $this->tabela . " WHERE " . $pk[self::TABELA_COLUNA_NOME] . " = ' . $" . $pk[self::TABELA_COLUNA_NOME] . ";";
-		$retorno[] = "		\$consulta = mysql_query(\$query);";
-		$retorno[] = "		if(mysql_error())";
-		$retorno[] = "			throw new Exception('Ocorreu um erro durante a consulta na tabela \"" . $this->tabela . "\", query: \"' . \$query . '\".');";
-		$retorno[] = "		if(mysql_num_rows(\$consulta) != 1)";
-		$retorno[] = "			throw new Exception('Ocorreu um erro durante a consulta na tabela \"" . $this->tabela . "\", a chave identificadora é inválida: \"' . \$" . $pk[self::TABELA_COLUNA_NOME] . " . '\".');";
-		$retorno[] = "		\$this->" . $pk[self::TABELA_COLUNA_NOME] . " = $" . $pk[self::TABELA_COLUNA_NOME] . ";";
+		$retorno[] = "		case filter_var($" . $pk[self::TABELA_COLUNA_NOME] . ", FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]):";
+		$retorno[] = "			\$query = 'SELECT * FROM " . $this->tabela . " WHERE " . $pk[self::TABELA_COLUNA_NOME] . " = ' . $" . $pk[self::TABELA_COLUNA_NOME] . ";";
+		$retorno[] = "			\$consulta = mysql_query(\$query);";
+		$retorno[] = "			if(mysql_error())";
+		$retorno[] = "				throw new Exception('Ocorreu um erro durante a consulta na tabela \"" . $this->tabela . "\", query: \"' . \$query . '\".');";
+		$retorno[] = "			if(mysql_num_rows(\$consulta) != 1)";
+		$retorno[] = "				throw new Exception('Ocorreu um erro durante a consulta na tabela \"" . $this->tabela . "\", a chave identificadora é inválida: \"' . \$" . $pk[self::TABELA_COLUNA_NOME] . " . '\".');";
+		$retorno[] = "			\$this->" . $pk[self::TABELA_COLUNA_NOME] . " = $" . $pk[self::TABELA_COLUNA_NOME] . ";";
 		if(isset($this->colunas[self::LISTA_FK]))
 		{
 			foreach($this->colunas[self::LISTA_FK] as $coluna => $dados)
 			{
 				if($this->converter_fk)
-					$retorno[] = "		\$this->" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . " = new " . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . "(mysql_result(\$consulta, 0, '" . $dados[self::TABELA_COLUNA_NOME] . "'));";
+					$retorno[] = "			\$this->" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . " = new " . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . "(mysql_result(\$consulta, 0, '" . $dados[self::TABELA_COLUNA_NOME] . "'));";
 				else
-					$retorno[] = "		\$this->" . $dados[self::TABELA_COLUNA_NOME] . " = mysql_result(\$consulta, 0, '" . $dados[self::TABELA_COLUNA_NOME] . "');";
+					$retorno[] = "			\$this->" . $dados[self::TABELA_COLUNA_NOME] . " = mysql_result(\$consulta, 0, '" . $dados[self::TABELA_COLUNA_NOME] . "');";
 			}
 		}
 		foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
-			$retorno[] = "		\$this->" . $dados[self::TABELA_COLUNA_NOME] . " = mysql_result(\$consulta, 0, '" . $dados[self::TABELA_COLUNA_NOME] . "');";
+			$retorno[] = "			\$this->" . $dados[self::TABELA_COLUNA_NOME] . " = mysql_result(\$consulta, 0, '" . $dados[self::TABELA_COLUNA_NOME] . "');";
+		$retorno[] = "			break;";
+		$retorno[] = "		case is_null($" . $pk[self::TABELA_COLUNA_NOME] . "):";
+		$retorno[] = "			// Nada a fazer, é um novo objeto vazio";
+		$retorno[] = "			break;";
+		$retorno[] = "		default:";
+		$retorno[] = "			throw new Exception('Tentativa de injection na classe ' . __CLASS__ . ', variável $" . $pk[self::TABELA_COLUNA_NOME] . " recebeu o valor ' . \$" . $pk[self::TABELA_COLUNA_NOME] . " . ' do tipo ' . gettype(\$" . $pk[self::TABELA_COLUNA_NOME] . "));";
+		$retorno[] = "			break;";
 		$retorno[] = "	}";
 		$retorno[] = "}";
 		return "	" . implode("\n	", $retorno);
@@ -582,17 +591,31 @@ class sohMolezaTabela
 		$retorno[] = "	{";
 		if($this->validar_set)
 		{
-			foreach($this->colunas[self::LISTA_FK] as $coluna => $dados)
+			if($this->colunas[self::LISTA_FK])
 			{
-				if($this->converter_fk)
+				foreach($this->colunas[self::LISTA_FK] as $coluna => $dados)
 				{
-					$retorno[] = "		case '" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . "':";
-					$retorno[] = "			if(!" . $this->getValidateSet('obj', $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME])) . ")";
-					$retorno[] = "				throw new Exception('O atributo ' . \$atributo . ' deve receber um objeto " . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . ", mas foi informado um valor inválido ' . \$valor . ' do tipo ' . gettype(\$valor));";
-					$retorno[] = "			\$this->\$atributo = \$valor;";
-					$retorno[] = "		break;";
+					if($this->converter_fk)
+					{
+						$retorno[] = "		case '" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . "':";
+						$retorno[] = "			if(!" . $this->getValidateSet('obj', $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME])) . ")";
+						$retorno[] = "				throw new Exception('O atributo ' . \$atributo . ' deve receber um objeto " . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . ", mas foi informado um valor inválido ' . \$valor . ' do tipo ' . gettype(\$valor));";
+						$retorno[] = "			\$this->\$atributo = \$valor;";
+						$retorno[] = "		break;";
+					}
+					else
+					{
+						$retorno[] = "		case '" . $dados[self::TABELA_COLUNA_NOME] . "':";
+						$retorno[] = "			if(!" . $this->getValidateSet($dados[self::TABELA_COLUNA_TIPO]) . ")";
+						$retorno[] = "				throw new Exception('O atributo ' . \$atributo . ' deve receber um " . $this->getTipoVar($dados[self::TABELA_COLUNA_TIPO]) . ", mas foi informado um valor inválido ' . \$valor . ' do tipo ' . gettype(\$valor));";
+						$retorno[] = "			\$this->\$atributo = \$valor;";
+						$retorno[] = "		break;";
+					}
 				}
-				else
+			}
+			if($this->colunas[self::LISTA_OUTROS])
+			{
+				foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
 				{
 					$retorno[] = "		case '" . $dados[self::TABELA_COLUNA_NOME] . "':";
 					$retorno[] = "			if(!" . $this->getValidateSet($dados[self::TABELA_COLUNA_TIPO]) . ")";
@@ -600,14 +623,6 @@ class sohMolezaTabela
 					$retorno[] = "			\$this->\$atributo = \$valor;";
 					$retorno[] = "		break;";
 				}
-			}
-			foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
-			{
-				$retorno[] = "		case '" . $dados[self::TABELA_COLUNA_NOME] . "':";
-				$retorno[] = "			if(!" . $this->getValidateSet($dados[self::TABELA_COLUNA_TIPO]) . ")";
-				$retorno[] = "				throw new Exception('O atributo ' . \$atributo . ' deve receber um " . $this->getTipoVar($dados[self::TABELA_COLUNA_TIPO]) . ", mas foi informado um valor inválido ' . \$valor . ' do tipo ' . gettype(\$valor));";
-				$retorno[] = "			\$this->\$atributo = \$valor;";
-				$retorno[] = "		break;";
 			}
 		}
 		else
