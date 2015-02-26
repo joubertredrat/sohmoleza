@@ -22,7 +22,7 @@ class sohMolezaTabela
 	 * Nome da classe obtido a partir do nome da tabela.
 	 *
 	 * @var string
-	 * @see iMoleza::criarNomeClasse()
+	 * @see sohMoleza::criarNomeClasse()
 	 */
 	private $nome_classe;
 
@@ -80,7 +80,7 @@ class sohMolezaTabela
 	/**
 	 * Nome do gerador de classes.
 	 */
-	const SOHMOLEZA_NOME = 'Soh Moleza';
+	const SOHMOLEZA_NOME = 'SohMoleza';
 
 	/**
 	 * Revisão do gerador de classes.
@@ -201,7 +201,7 @@ class sohMolezaTabela
 	/**
 	 * Permite a conversão de chaves estrangeiras para objetos.
 	 *
-	 * @return iMoleza Retorna o próprio objeto.
+	 * @return sohMoleza Retorna o próprio objeto.
 	 */
 	public function converterFk()
 	{
@@ -211,7 +211,7 @@ class sohMolezaTabela
 	/**
 	 * Permite definição de validação no método __set().
 	 *
-	 * @return iMoleza Retorna o próprio objeto.
+	 * @return sohMoleza Retorna o próprio objeto.
 	 */
 	public function validarMetodoSet()
 	{
@@ -223,7 +223,7 @@ class sohMolezaTabela
 	 * e cria o método salvar() que será responsável por chamar os 
 	 * métodos citados acima.
 	 *
-	 * @return iMoleza Retorna o próprio objeto.
+	 * @return sohMoleza Retorna o próprio objeto.
 	 */
 	public function setMetodoSalvar()
 	{
@@ -263,6 +263,7 @@ class sohMolezaTabela
 			foreach($this->copyright as $copyright)
 				$retorno[] = " * @copyright Copyright (c) " . date('Y') . ", " . $copyright;
 		}
+		$retorno[] = " * @link https://github.com/joubertredrat/sohmoleza";
 		$retorno[] = " */";
 		return implode("\n", $retorno);
 	}
@@ -300,7 +301,7 @@ class sohMolezaTabela
 	 */
 	private function converteFkParaObj($fk, $exibir_pk = false)
 	{
-		return ucwords(str_replace(self::SOHMOLEZA_FK, '', $fk)) . ($exibir_pk ? '->' . str_replace(self::SOHMOLEZA_FK, self::SOHMOLEZA_PK, $fk) : '');
+		return ucwords(str_replace(self::SOHMOLEZA_FK, '', $fk)).($exibir_pk ? '->'.str_replace(self::SOHMOLEZA_FK, self::SOHMOLEZA_PK, $fk) : '');
 	}
 
 	/**
@@ -363,34 +364,36 @@ class sohMolezaTabela
 			case 'tinytext':
 			case 'mediumtext':
 			case 'longtext':
-				$retorno = "is_string(\$atributo)";
-			break;
+				$retorno = "self::validarTipo(\$valor, 'string')";
+				break;
 			case 'int':
 			case 'smallint':
 			case 'bigint':
-			case 'timestamp':
-				$retorno = "is_int(\$atributo)";
-			break;
+				$retorno = "self::validarTipo(\$valor, 'integer')";
+				break;
 			case 'decimal':
 			case 'float':
 			case 'double':
 			case 'real':
-				$retorno = "is_float(\$atributo)";
+				$retorno = "self::validarTipo(\$valor, 'float')";
 			break;
 			case 'tinyint':
-				$retorno = "is_bool(\$atributo)";
+				$retorno = "self::validarTipo(\$valor, 'boolean')";
 			break;
 			case 'datetime':
-				$retorno = "strtotime(\$atributo)";
+				$retorno = "self::validarTipo(\$valor, 'datetime')";
 			break;
 			case 'date':
-				$retorno = "strtotime(\$atributo . ' 00:00:00')";
+				$retorno = "self::validarTipo(\$valor, 'datetime_date')";
 			break;
 			case 'time':
-				$retorno = "strtotime(date('Y-m-d') . ' ' . \$atributo)";
+				$retorno = "self::validarTipo(\$valor, 'datetime_time')";
 			break;
 			case 'year':
-				$retorno = "strtotime(\$atributo . '-' . date('m-d') . ' 00:00:00')";
+				$retorno = "self::validarTipo(\$valor, 'datetime_year')";
+			break;
+			case 'timestamp':
+				$retorno = "self::validarTipo(\$valor, 'datetime_timestamp')";
 			break;
 			case 'obj':
 				$retorno = "\$atributo intanceof " . $objeto;
@@ -418,7 +421,7 @@ class sohMolezaTabela
 			case 'date':
 			case 'time':
 			case 'year':
-				$retorno = '"\'" . mysql_escape_string($this->' . $atributo . ') . "\'"';
+				$retorno = '"\'".mysql_escape_string($this->' . $atributo . ')."\'"';
 			break;
 			case 'int':
 			case 'smallint':
@@ -431,7 +434,7 @@ class sohMolezaTabela
 				$retorno = '$this->' . $atributo;
 			break;
 			case 'tinyint':
-				$retorno = '$this->' . $atributo . ' ? "TRUE" : "FALSE"';
+				$retorno = '($this->' . $atributo . ' ? "TRUE" : "FALSE")';
 			break;
 		}
 		return $retorno;
@@ -483,19 +486,22 @@ class sohMolezaTabela
 				$retorno[] = "	" . implode("\n	", $colunas_fk);
 			}
 		}
-		foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
+		if($this->colunas[self::LISTA_OUTROS])
 		{
-			$colunas_outros = array();
-			$colunas_outros[] = "/**";
-			$documentacao = $dados[self::TABELA_COLUNA_COMENTARIO] ? $dados[self::TABELA_COLUNA_COMENTARIO] : 'Atributo interno da classe ' . $this->nome_classe . '.';
-			if(!mb_check_encoding($documentacao, 'UTF-8'))
-				$documentacao = utf8_encode($documentacao);
-			$colunas_outros[] = " * " . wordwrap($documentacao, 80, "\n	 * ") . (substr($documentacao, strlen($documentacao) - 1) != "." ? "." : "");
-			$colunas_outros[] = " *";
-			$colunas_outros[] = " * @var " . $this->getTipoVar($dados[self::TABELA_COLUNA_TIPO]);
-			$colunas_outros[] = " */";
-			$colunas_outros[] = "private $" . $dados[self::TABELA_COLUNA_NOME] . ";";
-			$retorno[] = "	" . implode("\n	", $colunas_outros);
+			foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
+			{
+				$colunas_outros = array();
+				$colunas_outros[] = "/**";
+				$documentacao = $dados[self::TABELA_COLUNA_COMENTARIO] ? $dados[self::TABELA_COLUNA_COMENTARIO] : 'Atributo interno da classe ' . $this->nome_classe . '.';
+				if(!mb_check_encoding($documentacao, 'UTF-8'))
+					$documentacao = utf8_encode($documentacao);
+				$colunas_outros[] = " * " . wordwrap($documentacao, 80, "\n	 * ") . (substr($documentacao, strlen($documentacao) - 1) != "." ? "." : "");
+				$colunas_outros[] = " *";
+				$colunas_outros[] = " * @var " . $this->getTipoVar($dados[self::TABELA_COLUNA_TIPO]);
+				$colunas_outros[] = " */";
+				$colunas_outros[] = "private $" . $dados[self::TABELA_COLUNA_NOME] . ";";
+				$retorno[] = "	" . implode("\n	", $colunas_outros);
+			}
 		}
 
 		$coluna_final[] = "/**";
@@ -534,15 +540,15 @@ class sohMolezaTabela
 		$retorno[] = "public function __construct($" . $pk[self::TABELA_COLUNA_NOME] . " = null)";
 		$retorno[] = "{";
 
-		$retorno[] = "	switch(true)";
+		$retorno[] = "	switch (true)";
 		$retorno[] = "	{";
 		$retorno[] = "		case filter_var($" . $pk[self::TABELA_COLUNA_NOME] . ", FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]):";
-		$retorno[] = "			\$query = 'SELECT * FROM " . $this->tabela . " WHERE " . $pk[self::TABELA_COLUNA_NOME] . " = ' . $" . $pk[self::TABELA_COLUNA_NOME] . ";";
+		$retorno[] = "			\$query = 'SELECT * FROM " . $this->tabela . " WHERE " . $pk[self::TABELA_COLUNA_NOME] . " = '.$" . $pk[self::TABELA_COLUNA_NOME] . ";";
 		$retorno[] = "			\$consulta = mysql_query(\$query);";
-		$retorno[] = "			if(mysql_error())";
-		$retorno[] = "				throw new Exception('Ocorreu um erro durante a consulta na tabela \"" . $this->tabela . "\", query: \"' . \$query . '\".');";
-		$retorno[] = "			if(mysql_num_rows(\$consulta) != 1)";
-		$retorno[] = "				throw new Exception('Ocorreu um erro durante a consulta na tabela \"" . $this->tabela . "\", a chave identificadora é inválida: \"' . \$" . $pk[self::TABELA_COLUNA_NOME] . " . '\".');";
+		$retorno[] = "			if (mysql_error())";
+		$retorno[] = "				throw new Exception('Ocorreu um erro durante a consulta na tabela \"" . $this->tabela . "\", query: \"'.\$query.'\".');";
+		$retorno[] = "			if (mysql_num_rows(\$consulta) != 1)";
+		$retorno[] = "				throw new Exception('Ocorreu um erro durante a consulta na tabela \"" . $this->tabela . "\", a chave identificadora é inválida: \"'.\$" . $pk[self::TABELA_COLUNA_NOME] . ".'\".');";
 		$retorno[] = "			\$this->" . $pk[self::TABELA_COLUNA_NOME] . " = $" . $pk[self::TABELA_COLUNA_NOME] . ";";
 		if(isset($this->colunas[self::LISTA_FK]))
 		{
@@ -554,14 +560,17 @@ class sohMolezaTabela
 					$retorno[] = "			\$this->" . $dados[self::TABELA_COLUNA_NOME] . " = mysql_result(\$consulta, 0, '" . $dados[self::TABELA_COLUNA_NOME] . "');";
 			}
 		}
-		foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
-			$retorno[] = "			\$this->" . $dados[self::TABELA_COLUNA_NOME] . " = mysql_result(\$consulta, 0, '" . $dados[self::TABELA_COLUNA_NOME] . "');";
+		if($this->colunas[self::LISTA_OUTROS])
+		{
+			foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
+				$retorno[] = "			\$this->" . $dados[self::TABELA_COLUNA_NOME] . " = mysql_result(\$consulta, 0, '" . $dados[self::TABELA_COLUNA_NOME] . "');";
+		}
 		$retorno[] = "			break;";
 		$retorno[] = "		case is_null($" . $pk[self::TABELA_COLUNA_NOME] . "):";
 		$retorno[] = "			// Nada a fazer, é um novo objeto vazio";
 		$retorno[] = "			break;";
 		$retorno[] = "		default:";
-		$retorno[] = "			throw new Exception('Tentativa de injection na classe ' . __CLASS__ . ', variável $" . $pk[self::TABELA_COLUNA_NOME] . " recebeu o valor ' . \$" . $pk[self::TABELA_COLUNA_NOME] . " . ' do tipo ' . gettype(\$" . $pk[self::TABELA_COLUNA_NOME] . "));";
+		$retorno[] = "			throw new Exception('Tentativa de injection na classe '.__CLASS__.', variável $".$pk[self::TABELA_COLUNA_NOME]." recebeu o valor '.\$" . $pk[self::TABELA_COLUNA_NOME] . ".' do tipo '.gettype(\$" . $pk[self::TABELA_COLUNA_NOME] . "));";
 		$retorno[] = "			break;";
 		$retorno[] = "	}";
 		$retorno[] = "}";
@@ -579,7 +588,7 @@ class sohMolezaTabela
 		if(!mb_check_encoding($documentacao, 'UTF-8'))
 			$documentacao = utf8_encode($documentacao);
 		$retorno[] = "/**";
-		$retorno[] = " * " . wordwrap($documentacao, 80, "\n	 * ");
+		$retorno[] = " * ".wordwrap($documentacao, 80, "\n	 * ");
 		$retorno[] = " *";
 		$retorno[] = " * @param string \$atributo Nome do atributo que irá receber o dado.";
 		$retorno[] = " * @param mixed \$valor Dado a ser atribuido ao atributo.";
@@ -587,7 +596,7 @@ class sohMolezaTabela
 		$retorno[] = " */";
 		$retorno[] = "public function __set(\$atributo, \$valor)";
 		$retorno[] = "{";
-		$retorno[] = "	switch(\$atributo)";
+		$retorno[] = "	switch (\$atributo)";
 		$retorno[] = "	{";
 		if($this->validar_set)
 		{
@@ -597,19 +606,27 @@ class sohMolezaTabela
 				{
 					if($this->converter_fk)
 					{
-						$retorno[] = "		case '" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . "':";
-						$retorno[] = "			if(!" . $this->getValidateSet('obj', $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME])) . ")";
-						$retorno[] = "				throw new Exception('O atributo ' . \$atributo . ' deve receber um objeto " . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . ", mas foi informado um valor inválido ' . \$valor . ' do tipo ' . gettype(\$valor));";
-						$retorno[] = "			\$this->\$atributo = \$valor;";
-						$retorno[] = "		break;";
+						$retorno[] = "		case '".$this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME])."':";
+						$retorno[] = "			if (".$this->getValidateSet('obj', $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME])).")";
+						$retorno[] = "				\$this->\$atributo = \$valor;";
+						$retorno[] = "			else";
+						if($dados[self::TABELA_COLUNA_NULO] == 'NO')
+							$retorno[] = "				throw new Exception('O atributo ' . \$atributo . ' deve receber um objeto " . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . ", mas foi informado um valor inválido ' . \$valor . ' do tipo ' . gettype(\$valor));";
+						else
+							$retorno[] = "				\$this->\$atributo = null;";
+						$retorno[] = "			break;";
 					}
 					else
 					{
-						$retorno[] = "		case '" . $dados[self::TABELA_COLUNA_NOME] . "':";
-						$retorno[] = "			if(!" . $this->getValidateSet($dados[self::TABELA_COLUNA_TIPO]) . ")";
-						$retorno[] = "				throw new Exception('O atributo ' . \$atributo . ' deve receber um " . $this->getTipoVar($dados[self::TABELA_COLUNA_TIPO]) . ", mas foi informado um valor inválido ' . \$valor . ' do tipo ' . gettype(\$valor));";
-						$retorno[] = "			\$this->\$atributo = \$valor;";
-						$retorno[] = "		break;";
+						$retorno[] = "		case '".$dados[self::TABELA_COLUNA_NOME]."':";
+						$retorno[] = "			if (".$this->getValidateSet($dados[self::TABELA_COLUNA_TIPO]).")";
+						$retorno[] = "				\$this->\$atributo = \$valor;";
+						$retorno[] = "			else";
+						if($dados[self::TABELA_COLUNA_NULO] == 'NO')
+							$retorno[] = "				throw new Exception('O atributo '.\$atributo.' deve receber um ".$this->getTipoVar($dados[self::TABELA_COLUNA_TIPO]).", mas foi informado um valor inválido '.\$valor.' do tipo '.gettype(\$valor));";
+						else
+							$retorno[] = "				\$this->\$atributo = null;";
+						$retorno[] = "			break;";
 					}
 				}
 			}
@@ -617,11 +634,15 @@ class sohMolezaTabela
 			{
 				foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
 				{
-					$retorno[] = "		case '" . $dados[self::TABELA_COLUNA_NOME] . "':";
-					$retorno[] = "			if(!" . $this->getValidateSet($dados[self::TABELA_COLUNA_TIPO]) . ")";
-					$retorno[] = "				throw new Exception('O atributo ' . \$atributo . ' deve receber um " . $this->getTipoVar($dados[self::TABELA_COLUNA_TIPO]) . ", mas foi informado um valor inválido ' . \$valor . ' do tipo ' . gettype(\$valor));";
-					$retorno[] = "			\$this->\$atributo = \$valor;";
-					$retorno[] = "		break;";
+					$retorno[] = "		case '".$dados[self::TABELA_COLUNA_NOME]."':";
+					$retorno[] = "			if (".$this->getValidateSet($dados[self::TABELA_COLUNA_TIPO]).")";
+					$retorno[] = "				\$this->\$atributo = \$valor;";
+					$retorno[] = "			else";
+					if($dados[self::TABELA_COLUNA_NULO] == 'NO')
+						$retorno[] = "				throw new Exception('O atributo '.\$atributo.' deve receber um ".$this->getTipoVar($dados[self::TABELA_COLUNA_TIPO]).", mas foi informado um valor inválido '.\$valor.' do tipo '.gettype(\$valor));";
+					else
+						$retorno[] = "				\$this->\$atributo = null;";
+					$retorno[] = "			break;";
 				}
 			}
 		}
@@ -632,23 +653,23 @@ class sohMolezaTabela
 				foreach($this->colunas[self::LISTA_FK] as $coluna => $dados)
 				{
 					if($this->converter_fk)
-						$retorno[] = "		case '" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . "':";
+						$retorno[] = "		case '".$this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME])."':";
 					else
-						$retorno[] = "		case '" . $dados[self::TABELA_COLUNA_NOME] . "':";
+						$retorno[] = "		case '".$dados[self::TABELA_COLUNA_NOME]."':";
 				}
 			}
 			foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
-				$retorno[] = "		case '" . $dados[self::TABELA_COLUNA_NOME] . "':";
+				$retorno[] = "		case '".$dados[self::TABELA_COLUNA_NOME]."':";
 			$retorno[] = "			\$this->\$atributo = \$valor;";
-			$retorno[] = "		break;";
+			$retorno[] = "			break;";
 		}
 		$retorno[] = "		default:";
-		$retorno[] = "			throw new Exception('Atributo ' . \$atributo . ' desconhecido ou inválido da classe ' . __CLASS__);";
-		$retorno[] = "		break;";
+		$retorno[] = "			throw new Exception('Atributo '.\$atributo.' desconhecido ou inválido da classe '.__CLASS__);";
+		$retorno[] = "			break;";
 		$retorno[] = "	}";
 		$retorno[] = "	\$this->objeto_alterado = true;";
 		$retorno[] = "}";
-		return "	" . implode("\n	", $retorno);
+		return "	".implode("\n	", $retorno);
 	}
 
 	/**
@@ -669,27 +690,30 @@ class sohMolezaTabela
 		$retorno[] = " */";
 		$retorno[] = "public function __get(\$atributo)";
 		$retorno[] = "{";
-		$retorno[] = "	switch(\$atributo)";
+		$retorno[] = "	switch (\$atributo)";
 		$retorno[] = "	{";
 		foreach($this->colunas[self::LISTA_PK] as $coluna => $dados)
-			$retorno[] = "		case '" . $dados[self::TABELA_COLUNA_NOME] . "':";
+			$retorno[] = "		case '".$dados[self::TABELA_COLUNA_NOME]."':";
 		if(isset($this->colunas[self::LISTA_FK]))
 		{
 			foreach($this->colunas[self::LISTA_FK] as $coluna => $dados)
 			{
 				if($this->converter_fk)
-					$retorno[] = "		case '" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME]) . "':";
+					$retorno[] = "		case '".$this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME])."':";
 				else
-					$retorno[] = "		case '" . $dados[self::TABELA_COLUNA_NOME] . "':";
+					$retorno[] = "		case '".$dados[self::TABELA_COLUNA_NOME]."':";
 			}
 		}
-		foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
-			$retorno[] = "		case '" . $dados[self::TABELA_COLUNA_NOME] . "':";
+		if($this->colunas[self::LISTA_OUTROS])
+		{
+			foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
+				$retorno[] = "		case '".$dados[self::TABELA_COLUNA_NOME]."':";
+		}
 		$retorno[] = "			return \$this->\$atributo;";
-		$retorno[] = "		break;";
+		$retorno[] = "			break;";
 		$retorno[] = "		default:";
-		$retorno[] = "			throw new Exception('Atributo ' . \$atributo . ' desconhecido ou inválido da classe ' . __CLASS__);";
-		$retorno[] = "		break;";
+		$retorno[] = "			throw new Exception('Atributo '.\$atributo.' desconhecido ou inválido da classe '. __CLASS__);";
+		$retorno[] = "			break;";
 		$retorno[] = "	}";
 		$retorno[] = "}";
 		return "	" . implode("\n	", $retorno);
@@ -708,34 +732,57 @@ class sohMolezaTabela
 		if(!mb_check_encoding($documentacao, 'UTF-8'))
 			$documentacao = utf8_encode($documentacao);
 		$retorno[] = "/**";
-		$retorno[] = " * " . wordwrap($documentacao, 80, "\n	 * ");
+		$retorno[] = " * ".wordwrap($documentacao, 80, "\n	 * ");
 		$retorno[] = " *";
-		$retorno[] = " * @return void";
+		$retorno[] = " * @return bool Retorna true ao final da operação com sucesso";
 		$retorno[] = " */";
-		$retorno[] = ($this->insert_update ? "private" : "public") . " function adicionar()";
+		$retorno[] = ($this->insert_update ? "private" : "public")." function adicionar()";
 		$retorno[] = "{";
-		$retorno[] = "	if(\$this->objeto_alterado)";
+		$retorno[] = "	if (\$this->objeto_alterado)";
 		$retorno[] = "	{";
-		$retorno[] = "		if(\$this->" . $pk[self::TABELA_COLUNA_NOME] . ")";
+		$retorno[] = "		if (\$this->" . $pk[self::TABELA_COLUNA_NOME] . ")";
 		$retorno[] = "			throw new Exception('Tentativa de adicionar ao banco de dados um registro ja existente.');";
 		if(isset($this->colunas[self::LISTA_FK]))
 		{
 			foreach($this->colunas[self::LISTA_FK] as $coluna => $dados)
 			{
-				if($this->converter_fk)
-					$retorno[] = "		\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = \$" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME], true) . ($dados[self::TABELA_COLUNA_NULO] == "NO" ? ";" : " ? \$" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME], true) . " : 'NULL';");
+				if($dados[self::TABELA_COLUNA_NULO] == "YES")
+				{
+					$retorno[] = "		if (!is_null(\$this->".$dados[self::TABELA_COLUNA_NOME]."))";
+					if($this->converter_fk)
+						$retorno[] = "			\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = \$" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME], true).";";
+					else
+						$retorno[] = "			\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = ".$this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]).";";
+				}
 				else
-					$retorno[] = "		\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = \$this->" . $dados[self::TABELA_COLUNA_NOME] . ($dados[self::TABELA_COLUNA_NULO] == "NO" ? ";" : " ? \$this->" . $dados[self::TABELA_COLUNA_NOME] . " : 'NULL';");
+				{
+					if($this->converter_fk)
+						$retorno[] = "		\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = \$" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME], true) . ($dados[self::TABELA_COLUNA_NULO] == "NO" ? ";" : " ? \$" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME], true) . " : 'NULL';");
+					else
+						$retorno[] = "		\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = ".$this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]).";";
+				}
 			}
 		}
-		foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
-			$retorno[] = "		\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = " . ($dados[self::TABELA_COLUNA_NULO] == "NO" ? $this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]) . ";" : "\$this->" . $dados[self::TABELA_COLUNA_NOME] . " ? " . $this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]) . " : 'NULL';");
-		$retorno[] = "		\$query = 'INSERT INTO " . $this->tabela . " (`' . implode('`, `', array_keys(\$campos)) . '`) VALUES (' . implode(', ', \$campos) . ')';";
+		if($this->colunas[self::LISTA_OUTROS])
+		{
+			foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
+			{
+				if($dados[self::TABELA_COLUNA_NULO] == "YES")
+				{
+					$retorno[] = "		if (!is_null(\$this->".$dados[self::TABELA_COLUNA_NOME]."))";
+					$retorno[] = "			\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = ".$this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]).";";
+				}
+				else
+					$retorno[] = "		\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = ".$this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]).";";
+			}
+		}
+		$retorno[] = "		\$query = 'INSERT INTO " . $this->tabela . " (`'.implode('`, `', array_keys(\$campos)).'`) VALUES ('.implode(', ', \$campos).')';";
 		$retorno[] = "		mysql_query(\$query);";
-		$retorno[] = "		if(mysql_error())";
-		$retorno[] = "			throw new Exception('Ocorreu um erro durante a adição de " . strtolower($this->nome_classe) . " no banco de dados: ' . mysql_error());";
+		$retorno[] = "		if (mysql_error())";
+		$retorno[] = "			throw new Exception('Ocorreu um erro durante a inclusão de " . strtolower($this->nome_classe) . " no banco de dados: '.mysql_error());";
 		$retorno[] = "		\$this->" . $pk[self::TABELA_COLUNA_NOME] . " = mysql_insert_id();";
 		$retorno[] = "		\$this->objeto_alterado = false;";
+		$retorno[] = "		return true;";
 		$retorno[] = "	}";
 		$retorno[] = "}";
 		return "	" . implode("\n	", $retorno);
@@ -756,36 +803,59 @@ class sohMolezaTabela
 		$retorno[] = "/**";
 		$retorno[] = " * " . wordwrap($documentacao, 80, "\n	 * ");
 		$retorno[] = " *";
-		$retorno[] = " * @return void";
+		$retorno[] = " * @return bool Retorna true ao final da operação com sucesso";
 		$retorno[] = " */";
 		$retorno[] = ($this->insert_update ? "private" : "public") . " function atualizar()";
 		$retorno[] = "{";
-		$retorno[] = "	if(\$this->objeto_alterado)";
+		$retorno[] = "	if (\$this->objeto_alterado)";
 		$retorno[] = "	{";
-		$retorno[] = "		if(!\$this->" . $pk[self::TABELA_COLUNA_NOME] . ")";
+		$retorno[] = "		if (!\$this->" . $pk[self::TABELA_COLUNA_NOME] . ")";
 		$retorno[] = "			throw new Exception('Tentativa de atualizar no banco de dados um registro inexistente.');";
 
 		if(isset($this->colunas[self::LISTA_FK]))
 		{
 			foreach($this->colunas[self::LISTA_FK] as $coluna => $dados)
 			{
-				if($this->converter_fk)
-					$retorno[] = "		\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = \"`" . $dados[self::TABELA_COLUNA_NOME] . "` =  \" . \$" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME], true) . ($dados[self::TABELA_COLUNA_NULO] == "NO" ? ";" : " ? \$" . $this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME], true) . " : 'NULL';");
+				if($dados[self::TABELA_COLUNA_NULO] == "YES")
+				{
+					$retorno[] = "		if (!is_null(\$this->".$dados[self::TABELA_COLUNA_NOME]."))";
+					if($this->converter_fk)
+						$retorno[] = "			\$campos['".$dados[self::TABELA_COLUNA_NOME]."'] = \"`" . $dados[self::TABELA_COLUNA_NOME]."` = \".\$".$this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME], true).";";
+					else
+						$retorno[] = "			\$campos['".$dados[self::TABELA_COLUNA_NOME]."'] = \"`" . $dados[self::TABELA_COLUNA_NOME]."` = \".".$this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]).";";
+				}
 				else
-					$retorno[] = "		\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = \"`" . $dados[self::TABELA_COLUNA_NOME] . "` = \" . \$this->" . $dados[self::TABELA_COLUNA_NOME] . ($dados[self::TABELA_COLUNA_NULO] == "NO" ? ";" : " ? \$this->" . $dados[self::TABELA_COLUNA_NOME] . " : 'NULL';");
+				{
+					if($this->converter_fk)
+						$retorno[] = "		\$campos['".$dados[self::TABELA_COLUNA_NOME]."'] = \"`".$dados[self::TABELA_COLUNA_NOME]."` = \".\$".$this->converteFkParaObj($dados[self::TABELA_COLUNA_NOME], true).";";
+					else
+						$retorno[] = "		\$campos['".$dados[self::TABELA_COLUNA_NOME]."'] = \"`".$dados[self::TABELA_COLUNA_NOME]."` = \".".$this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]).";";
+				}
 			}
 		}
-		foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
-			$retorno[] = "		\$campos['" . $dados[self::TABELA_COLUNA_NOME] . "'] = \"`" . $dados[self::TABELA_COLUNA_NOME] . "` = \" . " . ($dados[self::TABELA_COLUNA_NULO] == "NO" ? $this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]) . ";" : "\$this->" . $dados[self::TABELA_COLUNA_NOME] . " ? " . $this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]) . " : 'NULL';");
+		if($this->colunas[self::LISTA_OUTROS])
+		{
+			foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
+			{
+				if($dados[self::TABELA_COLUNA_NULO] == "YES")
+				{
+					$retorno[] = "		if (!is_null(\$this->".$dados[self::TABELA_COLUNA_NOME]."))";
+					$retorno[] = "			\$campos['".$dados[self::TABELA_COLUNA_NOME]."'] = \"`" . $dados[self::TABELA_COLUNA_NOME]."` = \".".$this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]).";";
+				}
+				else
+					$retorno[] = "		\$campos['".$dados[self::TABELA_COLUNA_NOME]."'] = \"`".$dados[self::TABELA_COLUNA_NOME]."` = \".".$this->getTratamentoBanco($dados[self::TABELA_COLUNA_TIPO], $dados[self::TABELA_COLUNA_NOME]).";";
+			}
+		}
 
-		$retorno[] = "		\$query = 'UPDATE " . $this->tabela . " SET ' . implode(', ', \$campos) . ' WHERE " . $pk[self::TABELA_COLUNA_NOME] . " = ' . \$this->" . $pk[self::TABELA_COLUNA_NOME] . ";";
+		$retorno[] = "		\$query = 'UPDATE ".$this->tabela . " SET '.implode(', ', \$campos).' WHERE ".$pk[self::TABELA_COLUNA_NOME]." = '.\$this->".$pk[self::TABELA_COLUNA_NOME].";";
 		$retorno[] = "		mysql_query(\$query);";
-		$retorno[] = "		if(mysql_error())";
-		$retorno[] = "			throw new Exception('Ocorreu um erro durante a alteração de " . strtolower($this->nome_classe) . " no banco de dados: ' . mysql_error());";
+		$retorno[] = "		if (mysql_error())";
+		$retorno[] = "			throw new Exception('Ocorreu um erro durante a alteração de ".strtolower($this->nome_classe)." no banco de dados: '.mysql_error());";
 		$retorno[] = "		\$this->objeto_alterado = false;";
+		$retorno[] = "		return true;";
 		$retorno[] = "	}";
 		$retorno[] = "}";
-		return "	" . implode("\n	", $retorno);
+		return "	".implode("\n	", $retorno);
 	}
 
 	/**
@@ -793,7 +863,7 @@ class sohMolezaTabela
 	 * deste recurso é necessário ativar a opção antes de gerar a classe.
 	 *
 	 * @return string Retorna o código-fonte do método salvar().
-	 * @see iMoleza::setAdicionarSalvarPrivado()
+	 * @see sohMoleza::setAdicionarSalvarPrivado()
 	 */
 	private function getMetodoSalvar()
 	{
@@ -805,11 +875,11 @@ class sohMolezaTabela
 		$retorno[] = "/**";
 		$retorno[] = " * " . wordwrap($documentacao, 80, "\n	 * ");
 		$retorno[] = " *";
-		$retorno[] = " * @return void";
+		$retorno[] = " * @return bool Retorna true ao final da operação com sucesso";
 		$retorno[] = " */";
 		$retorno[] = "public function salvar()";
 		$retorno[] = "{";
-		$retorno[] = "	\$this->" . $pk[self::TABELA_COLUNA_NOME] . " ? \$this->atualizar() : \$this->adicionar();";
+		$retorno[] = "	return \$this->" . $pk[self::TABELA_COLUNA_NOME] . " ? \$this->atualizar() : \$this->adicionar();";
 		$retorno[] = "}";
 		return "	" . implode("\n	", $retorno);	
 	}
@@ -829,16 +899,17 @@ class sohMolezaTabela
 		$retorno[] = "/**";
 		$retorno[] = " * " . wordwrap($documentacao, 80, "\n	 * ");
 		$retorno[] = " *";
-		$retorno[] = " * @return void";
+		$retorno[] = " * @return bool Retorna true ao final da operação com sucesso";
 		$retorno[] = " */";
 		$retorno[] = "public function deletar()";
 		$retorno[] = "{";
-		$retorno[] = "	if(!\$this->" . $pk[self::TABELA_COLUNA_NOME] . ")";
+		$retorno[] = "	if (!\$this->" . $pk[self::TABELA_COLUNA_NOME] . ")";
 		$retorno[] = "		throw new Exception('Tentativa de deletar do banco de dados um registro inexistente.');";
-		$retorno[] = "	\$query = 'DELETE FROM " . $this->tabela . " WHERE " . $pk[self::TABELA_COLUNA_NOME] . " = ' . \$this->" . $pk[self::TABELA_COLUNA_NOME] . ";";
+		$retorno[] = "	\$query = 'DELETE FROM " . $this->tabela . " WHERE " . $pk[self::TABELA_COLUNA_NOME] . " = '.\$this->" . $pk[self::TABELA_COLUNA_NOME] . ";";
 		$retorno[] = "	mysql_query(\$query);";
-		$retorno[] = "	if(mysql_error())";
-		$retorno[] = "		throw new Exception('Ocorreu um erro durante a alteração de " . strtolower($this->nome_classe) . " no banco de dados: ' . mysql_error());";
+		$retorno[] = "	if (mysql_error())";
+		$retorno[] = "		throw new Exception('Ocorreu um erro durante a alteração de " . strtolower($this->nome_classe) . " no banco de dados: '.mysql_error());";
+		$retorno[] = "	return true;";
 		$retorno[] = "}";
 		return "	" . implode("\n	", $retorno);
 	}
@@ -868,16 +939,16 @@ class sohMolezaTabela
 		$retorno[] = " * 	Exemplo: \$limite = array(0, 30);";
 		$retorno[] = " * @return array Retorna o resultado da consulta tendo o índice a chave identificadora apontando para os dados do registro.";
 		$retorno[] = " */";
-		$retorno[] = "public function buscar(\$colunas = array(), \$where = array(), \$ordem = array(), \$limite = array())";
+		$retorno[] = "public static function buscar(\$colunas = array(), \$where = array(), \$ordem = array(), \$limite = array())";
 		$retorno[] = "{";
 
-		$retorno[] = "	\$query  = 'SELECT ' . (\$colunas ? implode(', ', \$colunas) : '*') . ' ';";
-		$retorno[] = "	\$query .= 'FROM " . $this->tabela . " ' . (\$where ? 'WHERE ' . implode(' AND ', \$where) : '');";
-		$retorno[] = "	\$query .= (\$ordem ? ' ORDER BY ' . implode(', ', \$ordem['coluna']) . ' ' . \$ordem['ordem'] : '');";
-		$retorno[] = "	\$query .= (\$limite ? ' LIMIT ' . implode(', ', \$limite) : '');";
+		$retorno[] = "	\$query  = 'SELECT '.(\$colunas ? implode(', ', \$colunas) : '*').' ';";
+		$retorno[] = "	\$query .= 'FROM ".$this->tabela." '.(\$where ? 'WHERE '.implode(' AND ', \$where) : '');";
+		$retorno[] = "	\$query .= (\$ordem ? ' ORDER BY '.implode(', ', \$ordem['coluna']).' '.\$ordem['ordem'] : '');";
+		$retorno[] = "	\$query .= (\$limite ? ' LIMIT '.implode(', ', \$limite) : '');";
 		$retorno[] = "	\$consulta = mysql_query(\$query);";
 		$retorno[] = "	if(mysql_error())";
-		$retorno[] = "		throw new Exception('Ocorreu um erro durante a consulta de dados em " . strtolower($this->nome_classe) . " no banco de dados: ' . mysql_error());";
+		$retorno[] = "		throw new Exception('Ocorreu um erro durante a consulta de dados em ".strtolower($this->nome_classe)." no banco de dados: '.mysql_error());";
 		$retorno[] = "	\$retorno = array();";
 		$retorno[] = "	while(\$dados = mysql_fetch_array(\$consulta))";
 		$retorno[] = "	{";
@@ -887,12 +958,83 @@ class sohMolezaTabela
 			foreach($this->colunas[self::LISTA_FK] as $coluna => $dados)
 				$retorno[] = "		\$retorno[\$dados['" . $pk[self::TABELA_COLUNA_NOME] . "']]['" . $dados[self::TABELA_COLUNA_NOME] . "'] = \$dados['" . $dados[self::TABELA_COLUNA_NOME] . "'];";
 		}
-		foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
-			$retorno[] = "		\$retorno[\$dados['" . $pk[self::TABELA_COLUNA_NOME] . "']]['" . $dados[self::TABELA_COLUNA_NOME] . "'] = \$dados['" . $dados[self::TABELA_COLUNA_NOME] . "'];";
+		if($this->colunas[self::LISTA_OUTROS])
+		{
+			foreach($this->colunas[self::LISTA_OUTROS] as $coluna => $dados)
+				$retorno[] = "		\$retorno[\$dados['" . $pk[self::TABELA_COLUNA_NOME] . "']]['" . $dados[self::TABELA_COLUNA_NOME] . "'] = \$dados['" . $dados[self::TABELA_COLUNA_NOME] . "'];";
+		}
 		$retorno[] = "	}";
 		$retorno[] = "	return \$retorno;";
 		$retorno[] = "}";
 		return "	" . implode("\n	", $retorno);
+	}
+
+	public function getMetodoValidar()
+	{
+		$documentacao = "Valida os tipos de dados recebidos no método __set().";
+		if(!mb_check_encoding($documentacao, 'UTF-8'))
+			$documentacao = utf8_encode($documentacao);
+		$retorno[] = "/**";
+		$retorno[] = " * " . wordwrap($documentacao, 80, "\n	 * ");
+		$retorno[] = " *";
+		$retorno[] = " * @param mixed \$valor Valor a ser validado.";
+		$retorno[] = " * @param string \$tipo Tipo de dado a ser validado.";
+		$retorno[] = " * @return bool Retorna true caso seja um tipo válido ou false caso contra.";
+		$retorno[] = " */";
+		$retorno[] = "public static function validarTipo(\$valor, \$tipo)";
+		$retorno[] = "{";
+		$retorno[] = "	switch (\$tipo)";
+		$retorno[] = "	{";
+		$retorno[] = "		case 'string':";
+		$retorno[] = "			\$retorno = is_string(\$valor);";
+		$retorno[] = "			break;";
+		$retorno[] = "		case 'integer':";
+		$retorno[] = "			\$retorno = filter_var(\$valor, FILTER_VALIDATE_INT) !== false;";
+		$retorno[] = "			break;";
+		$retorno[] = "		case 'float':";
+		$retorno[] = "			\$retorno = filter_var(\$valor, FILTER_VALIDATE_FLOAT) !== false;";
+		$retorno[] = "			break;";
+		$retorno[] = "		case 'boolean':";
+		$retorno[] = "			\$retorno = is_bool(\$valor);";
+		$retorno[] = "			break;";
+		$retorno[] = "		case 'datetime':";
+		$retorno[] = "			if (self::validarTipo(substr(\$valor, 0, 4), 'datetime_year'))";
+		$retorno[] = "			{";
+		$retorno[] = "				DateTime::createFromFormat('Y-m-d H:i:s', \$valor);";
+		$retorno[] = "				\$validar = DateTime::getLastErrors();";
+		$retorno[] = "				\$retorno = (\$validar['warning_count'] == 0 && \$validar['error_count'] == 0);";
+		$retorno[] = "			}";
+		$retorno[] = "			else";
+		$retorno[] = "				\$retorno = false;";
+		$retorno[] = "			break;";
+		$retorno[] = "		case 'datetime_year':";
+		$retorno[] = "			if (\$valor == '0000')";
+		$retorno[] = "				\$retorno = true;";
+		$retorno[] = "			else";
+		$retorno[] = "				\$retorno = filter_var((int) \$valor, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1000, 'max_range' => 9999]]) !== false;";
+		$retorno[] = "			break;";
+		$retorno[] = "		case 'datetime_date':";
+		$retorno[] = "			if (\$valor === '0000-00-00')";
+		$retorno[] = "				\$retorno = true;";
+		$retorno[] = "			else";
+		$retorno[] = "				\$retorno = self::validarTipo(\$valor.' '.date('H:i:s'), 'datetime');";
+		$retorno[] = "			break;";
+		$retorno[] = "		case 'datetime_time':";
+		$retorno[] = "			if (\$valor === '00:00:00')";
+		$retorno[] = "				\$retorno = true;";
+		$retorno[] = "			else";
+		$retorno[] = "				\$retorno = self::validarTipo(date('Y-m-d').' '.\$valor, 'datetime');";
+		$retorno[] = "			break;";
+		$retorno[] = "		case 'datetime_timestamp':";
+		$retorno[] = "			\$retorno = filter_var((int) \$valor, FILTER_VALIDATE_INT, ['options' => ['min_range' => -2147483647, 'max_range' => 2147483647]]) !== false;";
+		$retorno[] = "			break;";
+		$retorno[] = "		default:";
+		$retorno[] = "			\$retorno = false;";
+		$retorno[] = "			break;";
+		$retorno[] = "	}";
+		$retorno[] = "	return \$retorno;";
+		$retorno[] = "}";
+		return "	" . implode("\n	", $retorno);		
 	}
 
 	/**
@@ -915,6 +1057,9 @@ class sohMolezaTabela
 		$codigo[] = 		"";
 		$codigo[] = 		$this->getMetodoGet();
 		$codigo[] = 		"";
+		if($this->validar_set)
+			$codigo[] = 	$this->getMetodoValidar();
+			$codigo[] = 	"";
 		if($this->insert_update)
 			$codigo[] = 	$this->getMetodoSalvar();
 			$codigo[] = 	"";

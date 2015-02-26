@@ -280,7 +280,7 @@ class sohMoleza
 	/**
 	 * Permite a conversão de chaves estrangeiras para objetos.
 	 *
-	 * @return iMoleza Retorna o próprio objeto.
+	 * @return sohMoleza Retorna o próprio objeto.
 	 */
 	public function converterFk()
 	{
@@ -291,7 +291,7 @@ class sohMoleza
 	/**
 	 * Permite definição de validação no método __set().
 	 *
-	 * @return iMoleza Retorna o próprio objeto.
+	 * @return sohMoleza Retorna o próprio objeto.
 	 */
 	public function validarMetodoSet()
 	{
@@ -304,7 +304,7 @@ class sohMoleza
 	 * e cria o método salvar() que será responsável por chamar os 
 	 * métodos citados acima.
 	 *
-	 * @return iMoleza Retorna o próprio objeto.
+	 * @return sohMoleza Retorna o próprio objeto.
 	 */
 	public function setMetodoSalvar()
 	{
